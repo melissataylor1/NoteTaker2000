@@ -1,59 +1,55 @@
-//dependencies
-const express = require("express");
-const path = require("path");
-const api = require("./lib/delete.js");
-const PORT = process.env.PORT || 3001;
+const express = require('express');
+const path = require('path');
+const fs = require('fs');
+const { v4: uuidv4 } = require('uuid');
+
 const app = express();
+const PORT = process.env.PORT || 3001;
 
-//middleware for accessibility 
+app.use(express.urlencoded({extended: true}));
 app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-app.use(express.static('public')); 
+app.use(express.static('public'));
 
 
-// indexhtml GETroute 
-app.get("/", (req, res) =>
-  res.sendFile(path.join(__dirname, "/public/index.html"))
-);
+// GET and POST request
 
-//noteshtml GETroute
-app.get('/notes', (req, res) =>
-    res.sendFile(path.join(__dirname, '/public/notes.html'))
-);
-
-
-
-
-//API Routing
-
-app.post('/api/notes', (req, res) => {
-  console.log(req.body);
-    fs.readFile('./db/db.json', 'utf8', (err, data) => {
-      if (err) throw err;
-  
-// return and parse
-      const oldNotes = JSON.parse(data);
-      oldNotes.push({
-        title:req.body.title,
-        text:req.body.text, 
-        id:uuidv4()
-      });
-    fs.writeFile('db/db.json', JSON.stringify(oldNotes, null, 4), (err)=>{
-      if (err) throw err; 
-      res.json(oldNotes);
-    })
+app.get("/api/notes", (req, res) => {
+    fs.readFile(path.join(__dirname, "/db/db.json"), (err,data) => {
+        if(err) throw err;
+        const notes = JSON.parse(data);
+        res.json(notes);
     });
 });
 
-// trying to add delete
-app.delete('/api/notes/:id', (req, res) => {
-  let notes = JSON.parse(fs.readFileSync('./db/db.json', 'utf-8'));
-  let newNotes = notes.filter(note => note.id !== req.params.id);
-  fs.writeFileSync('./db/db.json', JSON.stringify(newNotes));
-  res.send('Note deleted!');
-});
+app.post('/api/notes', (req, res) => {
+    const {title, text} = req.body;
+    if (!title || !text ) {
+        throw new Error("cant be blnk");
+    }
+ const newNote = {title, text, id: uuidv4()};
+ fs.readFile(path.join(__dirname, "/db/db.json"), (err,data) => {
+    if(err) {
+        console.log(err);
+    }
+    else {
+        const dbNotes = JSON.parse(data);
+        dbNotes.push(newNote);
+        fs.writeFile("./db/db.json", JSON.stringify(dbNotes),(err) => 
+        err ? console.error(err) : console.log("Successfully added note."))
+    }
 
-//app listener
-app.listen(PORT, () =>
-  console.log(`App listening at http://localhost:${PORT}`)
-);
+ })
+ const response = {
+    body: newNote
+ }
+ console.log(response)
+ res.json(response)
+})
+
+
+
+// HTML routes for notes.html and index.html
+
+app.get("/notes", (req,res) => {
+    res.sendFile(path.join(__dirname,"/public/notes.html"));
+});
